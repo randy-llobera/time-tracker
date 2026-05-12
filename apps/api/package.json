@@ -1,0 +1,25 @@
+{
+  "name": "@time-tracker/api",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.26.1",
+  "dev": "tsx watch src/server.ts",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "latest",
+    "csv-stringify": "latest",
+    "date-fns": "latest",
+    "express": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@types/express": "latest",
+    "@types/node": "latest",
+    "tsx": "latest",
+    "typescript": "latest"
+  }
+}

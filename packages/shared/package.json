@@ -1,0 +1,8 @@
+{
+  "name": "@time-tracker/shared",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "types": "src/index.js",
+  "packageManager": "pnpm@10.26.1"
+}
