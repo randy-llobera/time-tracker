@@ -11,12 +11,15 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "latest",
+    "@time-tracker/shared": "workspace:*",
+    "cors": "^2.8.6",
     "csv-stringify": "latest",
     "date-fns": "latest",
     "express": "latest",
     "zod": "latest"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "latest",
     "@types/node": "latest",
     "tsx": "latest",
