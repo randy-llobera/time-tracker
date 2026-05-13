@@ -24,6 +24,24 @@ export type CurrentStatus = {
   } | null;
 };
 
+export type HistoryItem = {
+  id: string;
+  userId: string;
+  employerId: string;
+  workDate: string;
+  startedAt: string;
+  endedAt: string | null;
+  status: WorkDayStatus;
+  lastEventType: EventType;
+  lastEventAt: string;
+  totalWorkedSeconds: number;
+  totalBreakSeconds: number;
+};
+
+type HistoryResponse = {
+  items: HistoryItem[];
+};
+
 type StatusInput = {
   userId: string;
   employerId: string;
@@ -93,6 +111,15 @@ export const fetchStatus = ({ userId, employerId }: StatusInput) => {
   });
 
   return fetchJson<CurrentStatus>(`/api/status?${searchParams.toString()}`);
+};
+
+export const fetchHistory = ({ userId, employerId }: StatusInput) => {
+  const searchParams = new URLSearchParams({
+    userId,
+    employerId,
+  });
+
+  return fetchJson<HistoryResponse>(`/api/history?${searchParams.toString()}`);
 };
 
 export const clockIn = (input: EventActionInput) =>

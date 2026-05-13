@@ -4,15 +4,18 @@ import {
   clockOut,
   endDay,
   fetchEmployers,
+  fetchHistory,
   fetchStatus,
   fetchUsers,
   type CurrentStatus,
+  type HistoryItem,
   type SelectOption,
 } from '../api/client';
 import {
   CurrentStatusCard,
   type ClockAction,
 } from './CurrentStatusCard';
+import { HistorySection } from './HistorySection';
 import { SelectField } from './SelectField';
 
 const selectedUserIdKey = 'selectedUserId';
@@ -34,6 +37,9 @@ export const SelectionCard = () => {
   const [statusError, setStatusError] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<ClockAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadOptions = async () => {
@@ -129,13 +135,77 @@ export const SelectionCard = () => {
     };
   }, [selectedEmployerId, selectedUserId]);
 
+  useEffect(() => {
+    if (!selectedUserId || !selectedEmployerId) {
+      return;
+    }
+
+    let isCurrentRequest = true;
+
+    const loadHistory = async () => {
+      setIsHistoryLoading(true);
+      setHistoryError(null);
+
+      try {
+        const history = await fetchHistory({
+          userId: selectedUserId,
+          employerId: selectedEmployerId,
+        });
+
+        if (isCurrentRequest) {
+          setHistoryItems(history.items);
+        }
+      } catch (err) {
+        if (isCurrentRequest) {
+          setHistoryItems([]);
+          setHistoryError(
+            err instanceof Error ? err.message : 'Unknown API error',
+          );
+        }
+      } finally {
+        if (isCurrentRequest) {
+          setIsHistoryLoading(false);
+        }
+      }
+    };
+
+    void loadHistory();
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [selectedEmployerId, selectedUserId]);
+
   const loadStatusText = isLoading
     ? 'Loading users and employers...'
     : 'Choose who is working today.';
   const hasSelections = Boolean(selectedUserId && selectedEmployerId);
+  const isActionLoading = loadingAction !== null;
+  const isSelectionStatusPending = hasSelections && isStatusLoading;
+  const hasStartedWorkDay =
+    hasSelections && status !== null && status.state !== 'not_started';
+  const areSelectionsDisabled =
+    isLoading ||
+    isActionLoading ||
+    isSelectionStatusPending ||
+    hasStartedWorkDay;
+  const visibleStatus = hasSelections ? status : null;
+  const visibleStatusError = hasSelections ? statusError : null;
+  const visibleHistoryItems = hasSelections ? historyItems : [];
+  const visibleHistoryError = hasSelections ? historyError : null;
+
+  const handleUserChange = (userId: string) => {
+    setActionError(null);
+    setSelectedUserId(userId);
+  };
+
+  const handleEmployerChange = (employerId: string) => {
+    setActionError(null);
+    setSelectedEmployerId(employerId);
+  };
 
   const handleAction = async (action: ClockAction) => {
-    if (!selectedUserId || !selectedEmployerId) {
+    if (!selectedUserId || !selectedEmployerId || loadingAction) {
       return;
     }
 
@@ -154,7 +224,13 @@ export const SelectionCard = () => {
 
     try {
       await actionRequest(actionInput);
-      setStatus(await fetchStatus(actionInput));
+      const [currentStatus, history] = await Promise.all([
+        fetchStatus(actionInput),
+        fetchHistory(actionInput),
+      ]);
+
+      setStatus(currentStatus);
+      setHistoryItems(history.items);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Unknown API error');
     } finally {
@@ -180,8 +256,8 @@ export const SelectionCard = () => {
           placeholder='Select user'
           options={users}
           value={selectedUserId}
-          disabled={isLoading || users.length === 0}
-          onChange={setSelectedUserId}
+          disabled={areSelectionsDisabled || users.length === 0}
+          onChange={handleUserChange}
         />
 
         <SelectField
@@ -189,25 +265,34 @@ export const SelectionCard = () => {
           placeholder='Select employer'
           options={employers}
           value={selectedEmployerId}
-          disabled={isLoading || employers.length === 0}
-          onChange={setSelectedEmployerId}
+          disabled={areSelectionsDisabled || employers.length === 0}
+          onChange={handleEmployerChange}
         />
       </div>
 
       {!isLoading && !error && (
         <p className='mt-5 text-sm text-slate-400'>
-          Your selections are saved on this device.
+          {hasStartedWorkDay
+            ? 'End the current day before changing user or employer.'
+            : 'Your selections are saved on this device.'}
         </p>
       )}
 
       <CurrentStatusCard
-        status={status}
-        isLoading={isStatusLoading}
-        error={statusError}
+        status={visibleStatus}
+        isLoading={hasSelections && isStatusLoading}
+        error={visibleStatusError}
         hasSelections={hasSelections}
         actionError={actionError}
         loadingAction={loadingAction}
         onAction={handleAction}
+      />
+
+      <HistorySection
+        items={visibleHistoryItems}
+        isLoading={hasSelections && isHistoryLoading}
+        error={visibleHistoryError}
+        hasSelections={hasSelections}
       />
     </div>
   );
