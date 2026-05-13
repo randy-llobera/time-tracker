@@ -5,7 +5,7 @@
   "packageManager": "pnpm@10.26.1",
   "dev": "tsx watch src/server.ts",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch --env-file-if-exists=.env src/server.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },

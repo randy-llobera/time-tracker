@@ -1,5 +1,10 @@
 import express from 'express';
 import cors from 'cors';
+import { eventsRouter } from './routes/events.js';
+import { employersRouter } from './routes/employers.js';
+import { historyRouter } from './routes/history.js';
+import { statusRouter } from './routes/status.js';
+import { usersRouter } from './routes/users.js';
 
 const app = express();
 
@@ -31,5 +36,11 @@ app.use(express.json());
 app.get('/health', (_req, res) => {
   res.json({ ok: true });
 });
+
+app.use('/api/employers', employersRouter);
+app.use('/api/events', eventsRouter);
+app.use('/api/history', historyRouter);
+app.use('/api/status', statusRouter);
+app.use('/api/users', usersRouter);
 
 export default app;
