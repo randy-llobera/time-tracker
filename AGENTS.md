@@ -197,6 +197,30 @@ Root `db/` is for SQL schema, seed data, and database setup notes.
 
 ---
 
+## Frontend implementation rules
+
+Keep the frontend structure simple. Do not introduce a `features/` folder unless the app grows enough to justify it.
+
+Preferred frontend source structure:
+
+```txt
+apps/web/src/
+  api/          frontend API client and endpoint wrappers
+  components/   reusable UI components
+  services/     frontend orchestration/business logic when it does not belong in a component
+  lib/          small generic helpers such as local storage and formatting
+  types/        frontend/shared API types when not imported from packages/shared
+  App.tsx
+  main.tsx
+  index.css
+```
+
+Start by keeping logic close to the component. Move logic into `services/` or `lib/` only when it is reused or makes the component too large.
+
+Use native `fetch` through a small API client. Do not add Axios or a data-fetching library unless explicitly requested.
+
+---
+
 ## Coding conventions
 
 Use TypeScript strictly.
