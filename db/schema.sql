@@ -5,16 +5,21 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- USERS
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Prevent duplicate active users by name, case-insensitive
+CREATE UNIQUE INDEX IF NOT EXISTS unique_active_user_name
+ON users (lower(name))
+WHERE active = TRUE;
 
 -- EMPLOYERS
-CREATE TABLE employers (
+CREATE TABLE IF NOT EXISTS employers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -22,8 +27,13 @@ CREATE TABLE employers (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Prevent duplicate active employers by name, case-insensitive
+CREATE UNIQUE INDEX IF NOT EXISTS unique_active_employer_name
+ON employers (lower(name))
+WHERE active = TRUE;
+
 -- WORK DAYS
-CREATE TABLE work_days (
+CREATE TABLE IF NOT EXISTS work_days (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   user_id UUID NOT NULL REFERENCES users(id),
@@ -62,7 +72,7 @@ CREATE TABLE work_days (
 );
 
 -- EVENTS
-CREATE TABLE events (
+CREATE TABLE IF NOT EXISTS events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   work_day_id UUID NOT NULL REFERENCES work_days(id) ON DELETE CASCADE,
@@ -85,14 +95,14 @@ CREATE TABLE events (
 -- INDEXES
 
 -- Prevent two active workdays for the same user/employer
-CREATE UNIQUE INDEX unique_active_work_day_per_user_employer
+CREATE UNIQUE INDEX IF NOT EXISTS unique_active_work_day_per_user_employer
 ON work_days (user_id, employer_id)
 WHERE status = 'active';
 
 -- Helps history queries
-CREATE INDEX idx_work_days_history
+CREATE INDEX IF NOT EXISTS idx_work_days_history
 ON work_days (user_id, employer_id, work_date DESC);
 
 -- Helps reconstruct sessions/breaks from events
-CREATE INDEX idx_events_work_day_time
+CREATE INDEX IF NOT EXISTS idx_events_work_day_time
 ON events (work_day_id, occurred_at);
