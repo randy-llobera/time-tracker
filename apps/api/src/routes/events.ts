@@ -10,8 +10,7 @@ import {
 const eventActionSchema = z.object({
   userId: z.uuid(),
   employerId: z.uuid(),
-  occurredAt: z.iso.datetime().optional(),
-});
+}).strict();
 
 export const eventsRouter = Router();
 
@@ -21,7 +20,6 @@ const parseEventAction = (body: unknown) => {
   return {
     userId: data.userId,
     employerId: data.employerId,
-    occurredAt: data.occurredAt ? new Date(data.occurredAt) : new Date(),
   };
 };
 
@@ -45,7 +43,9 @@ const handleEventError = (
 
 eventsRouter.post('/clock-in', async (req, res, next) => {
   try {
-    res.status(201).json(await clockIn(parseEventAction(req.body)));
+    const result = await clockIn(parseEventAction(req.body));
+
+    res.status(201).json(result);
   } catch (error) {
     handleEventError(error, res, next);
   }
@@ -53,7 +53,9 @@ eventsRouter.post('/clock-in', async (req, res, next) => {
 
 eventsRouter.post('/clock-out', async (req, res, next) => {
   try {
-    res.status(201).json(await clockOut(parseEventAction(req.body)));
+    const result = await clockOut(parseEventAction(req.body));
+
+    res.status(201).json(result);
   } catch (error) {
     handleEventError(error, res, next);
   }
@@ -61,7 +63,9 @@ eventsRouter.post('/clock-out', async (req, res, next) => {
 
 eventsRouter.post('/end-day', async (req, res, next) => {
   try {
-    res.status(201).json(await endDay(parseEventAction(req.body)));
+    const result = await endDay(parseEventAction(req.body));
+
+    res.status(201).json(result);
   } catch (error) {
     handleEventError(error, res, next);
   }

@@ -8,7 +8,6 @@ export class EventActionError extends Error {
 type EventActionInput = {
   userId: string;
   employerId: string;
-  occurredAt: Date;
 };
 
 type EventActionRow = {
@@ -92,7 +91,7 @@ export const clockIn = async (
       SELECT
         ${input.userId}::uuid AS user_id,
         ${input.employerId}::uuid AS employer_id,
-        ${input.occurredAt.toISOString()}::timestamptz AS occurred_at
+        now() AS occurred_at
     ),
     eligible_input AS (
       SELECT input.*
@@ -162,32 +161,38 @@ export const clockIn = async (
         last_event_type = 'clock_in',
         last_event_at = input.occurred_at,
         updated_at = now()
-      FROM target_day
+      FROM active_day
       CROSS JOIN input
-      WHERE work_days.id = target_day.id
+      WHERE work_days.id = active_day.id
+        AND active_day.last_event_type = 'clock_out'
       RETURNING work_days.*
+    ),
+    result_day AS (
+      SELECT * FROM created_day
+      UNION ALL
+      SELECT * FROM updated_day
     )
     SELECT
       inserted_event.id AS "eventId",
-      updated_day.id AS "workDayId",
-      updated_day.user_id AS "userId",
-      updated_day.employer_id AS "employerId",
+      result_day.id AS "workDayId",
+      result_day.user_id AS "userId",
+      result_day.employer_id AS "employerId",
       inserted_event.type AS "eventType",
       inserted_event.occurred_at AS "occurredAt",
       inserted_event.created_at AS "eventCreatedAt",
-      updated_day.work_date AS "workDate",
-      updated_day.started_at AS "startedAt",
-      updated_day.ended_at AS "endedAt",
-      updated_day.status,
-      updated_day.last_event_type AS "lastEventType",
-      updated_day.last_event_at AS "lastEventAt"
+      result_day.work_date AS "workDate",
+      result_day.started_at AS "startedAt",
+      result_day.ended_at AS "endedAt",
+      result_day.status,
+      result_day.last_event_type AS "lastEventType",
+      result_day.last_event_at AS "lastEventAt"
     FROM inserted_event
-    JOIN updated_day ON updated_day.id = inserted_event.work_day_id
+    JOIN result_day ON result_day.id = inserted_event.work_day_id
   `) as EventActionRow[];
 
   return toEventActionResult(
     rows,
-    'Clock in is not allowed for this user and employer.',
+    'Already clocked in.',
   );
 };
 
@@ -199,7 +204,7 @@ export const clockOut = async (
       SELECT
         ${input.userId}::uuid AS user_id,
         ${input.employerId}::uuid AS employer_id,
-        ${input.occurredAt.toISOString()}::timestamptz AS occurred_at
+        now() AS occurred_at
     ),
     active_day AS (
       SELECT work_days.*
@@ -262,7 +267,7 @@ export const clockOut = async (
 
   return toEventActionResult(
     rows,
-    'Clock out is not allowed for this user and employer.',
+    'Cannot clock out while already on break.',
   );
 };
 
@@ -274,7 +279,7 @@ export const endDay = async (
       SELECT
         ${input.userId}::uuid AS user_id,
         ${input.employerId}::uuid AS employer_id,
-        ${input.occurredAt.toISOString()}::timestamptz AS occurred_at
+        now() AS occurred_at
     ),
     active_day AS (
       SELECT work_days.*
@@ -338,6 +343,6 @@ export const endDay = async (
 
   return toEventActionResult(
     rows,
-    'End day is not allowed for this user and employer.',
+    'Work day has already finished.',
   );
 };
