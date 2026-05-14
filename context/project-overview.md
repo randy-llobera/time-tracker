@@ -150,14 +150,67 @@ Do not silently invent work time.
 
 If a workday looks stale, the app should ask the user to confirm what happened.
 
-Examples:
+Criteria:
 
-- user stayed clocked in for an unusually long time
+- user stayed clocked in for an unusually long time.
 - user clocked out but never ended the day
 
-If the latest event is `clock_out`, it is safe to offer ending the day at the last clock-out timestamp.
+If the latest event is `clock_out`, it is safe to offer ending the day at the last clock-out timestamp. threshold 8h
 
-If the latest event is `clock_in`, the user should pick the actual time they stopped working.
+If the latest event is `clock_in`, the user should pick the actual time they stopped working. threshold 14h
+
+Thresholds as backend constants:
+
+const CLOCKED_IN_REVIEW_THRESHOLD_HOURS = 14;
+const CLOCKED_OUT_REVIEW_THRESHOLD_HOURS = 8;
+
+The backend should set `needs_review`. When the frontend asks for status, the backend checks whether the active workday is stale.
+
+Resolution:
+
+Case A:
+
+When `last_event_type = clock_out`, frontend show: "You clocked out but did not end the day. End the workday at your last clock-out time?"
+
+If user confirms:
+
+Backend should:
+
+1. Find the active work_day.
+2. Confirm status = needs_review.
+3. Confirm last_event_type = clock_out.
+4. Create an end_day event with: occurred_at = work_days.last_event_at
+   last_event_at = last_event_at
+5. Set status = ended, ended_at = last_event_at, last_event_type = end_day
+
+Case B:
+
+When `last_event_type = clock_in`, frontend show: "Last work session was not ended. Please choose the time that stop working?"
+
+If user confirms:
+
+Backend should:
+
+1. Find the active work_day.
+2. Confirm status = needs_review.
+3. Confirm last_event_type = clock_in.
+4. Validate selected occurredAt:
+   - must be after the last clock_in
+   - should not be in the future
+   - should probably be before now
+5. Create an end_day event with: occurred_at = user-selected time
+6. Update work_days: status = ended, ended_at = selected occurredAt, last_event_type = end_day, last_event_at = selected occurredAt
+
+Frontend behavior:
+
+When status is: `needs_review`
+
+Frontend should:
+
+- show a warning card
+- hide normal clock action buttons
+- explain the reason
+- show the correct resolution UI
 
 ---
 

@@ -2,12 +2,21 @@ import type { EventType, WorkDayStatus } from '@time-tracker/shared';
 import { sql } from './client.js';
 
 export class EventActionError extends Error {
-  statusCode = 409;
+  constructor(
+    message: string,
+    public statusCode = 409,
+  ) {
+    super(message);
+  }
 }
 
 type EventActionInput = {
   userId: string;
   employerId: string;
+};
+
+type ResolveStaleDayInput = EventActionInput & {
+  occurredAt?: Date;
 };
 
 type EventActionRow = {
@@ -99,13 +108,22 @@ export const clockIn = async (
       JOIN users ON users.id = input.user_id AND users.active = TRUE
       JOIN employers ON employers.id = input.employer_id AND employers.active = TRUE
     ),
-    active_day AS (
+    open_day AS (
       SELECT work_days.*
       FROM work_days
       JOIN eligible_input
         ON eligible_input.user_id = work_days.user_id
         AND eligible_input.employer_id = work_days.employer_id
-      WHERE work_days.status = 'active'
+      WHERE work_days.status IN ('active', 'needs_review')
+      ORDER BY
+        CASE WHEN work_days.status = 'needs_review' THEN 0 ELSE 1 END,
+        work_days.started_at DESC
+      LIMIT 1
+    ),
+    active_day AS (
+      SELECT *
+      FROM open_day
+      WHERE status = 'active'
       LIMIT 1
     ),
     created_day AS (
@@ -127,7 +145,7 @@ export const clockIn = async (
         'clock_in',
         eligible_input.occurred_at
       FROM eligible_input
-      WHERE NOT EXISTS (SELECT 1 FROM active_day)
+      WHERE NOT EXISTS (SELECT 1 FROM open_day)
       RETURNING *
     ),
     target_day AS (
@@ -206,6 +224,17 @@ export const clockOut = async (
         ${input.employerId}::uuid AS employer_id,
         now() AS occurred_at
     ),
+    review_day AS (
+      SELECT work_days.*
+      FROM work_days
+      JOIN users ON users.id = work_days.user_id AND users.active = TRUE
+      JOIN employers ON employers.id = work_days.employer_id AND employers.active = TRUE
+      JOIN input
+        ON input.user_id = work_days.user_id
+        AND input.employer_id = work_days.employer_id
+      WHERE work_days.status = 'needs_review'
+      LIMIT 1
+    ),
     active_day AS (
       SELECT work_days.*
       FROM work_days
@@ -216,6 +245,7 @@ export const clockOut = async (
         AND input.employer_id = work_days.employer_id
       WHERE work_days.status = 'active'
         AND work_days.last_event_type = 'clock_in'
+        AND NOT EXISTS (SELECT 1 FROM review_day)
       LIMIT 1
     ),
     inserted_event AS (
@@ -281,6 +311,17 @@ export const endDay = async (
         ${input.employerId}::uuid AS employer_id,
         now() AS occurred_at
     ),
+    review_day AS (
+      SELECT work_days.*
+      FROM work_days
+      JOIN users ON users.id = work_days.user_id AND users.active = TRUE
+      JOIN employers ON employers.id = work_days.employer_id AND employers.active = TRUE
+      JOIN input
+        ON input.user_id = work_days.user_id
+        AND input.employer_id = work_days.employer_id
+      WHERE work_days.status = 'needs_review'
+      LIMIT 1
+    ),
     active_day AS (
       SELECT work_days.*
       FROM work_days
@@ -290,6 +331,7 @@ export const endDay = async (
         ON input.user_id = work_days.user_id
         AND input.employer_id = work_days.employer_id
       WHERE work_days.status = 'active'
+        AND NOT EXISTS (SELECT 1 FROM review_day)
       LIMIT 1
     ),
     inserted_event AS (
@@ -344,5 +386,100 @@ export const endDay = async (
   return toEventActionResult(
     rows,
     'Work day has already finished.',
+  );
+};
+
+export const resolveStaleDay = async (
+  input: ResolveStaleDayInput,
+): Promise<EventActionResult> => {
+  const selectedOccurredAt = input.occurredAt?.toISOString() ?? null;
+  const rows = (await sql`
+    WITH input AS (
+      SELECT
+        ${input.userId}::uuid AS user_id,
+        ${input.employerId}::uuid AS employer_id,
+        ${selectedOccurredAt}::timestamptz AS selected_occurred_at,
+        now() AS requested_at
+    ),
+    review_day AS (
+      SELECT work_days.*
+      FROM work_days
+      JOIN users ON users.id = work_days.user_id AND users.active = TRUE
+      JOIN employers ON employers.id = work_days.employer_id AND employers.active = TRUE
+      JOIN input
+        ON input.user_id = work_days.user_id
+        AND input.employer_id = work_days.employer_id
+      WHERE work_days.status = 'needs_review'
+        AND work_days.last_event_type IN ('clock_in', 'clock_out')
+      LIMIT 1
+    ),
+    valid_day AS (
+      SELECT
+        review_day.*,
+        CASE
+          WHEN review_day.last_event_type = 'clock_out'
+          THEN review_day.last_event_at
+          ELSE input.selected_occurred_at
+        END AS resolved_at
+      FROM review_day
+      CROSS JOIN input
+      WHERE review_day.last_event_type = 'clock_out'
+        OR (
+          review_day.last_event_type = 'clock_in'
+          AND input.selected_occurred_at IS NOT NULL
+          AND input.selected_occurred_at > review_day.last_event_at
+          AND input.selected_occurred_at <= input.requested_at
+        )
+    ),
+    inserted_event AS (
+      INSERT INTO events (
+        work_day_id,
+        user_id,
+        employer_id,
+        type,
+        occurred_at
+      )
+      SELECT
+        valid_day.id,
+        valid_day.user_id,
+        valid_day.employer_id,
+        'end_day',
+        valid_day.resolved_at
+      FROM valid_day
+      RETURNING *
+    ),
+    updated_day AS (
+      UPDATE work_days
+      SET
+        ended_at = valid_day.resolved_at,
+        status = 'ended',
+        last_event_type = 'end_day',
+        last_event_at = valid_day.resolved_at,
+        updated_at = now()
+      FROM valid_day
+      WHERE work_days.id = valid_day.id
+      RETURNING work_days.*
+    )
+    SELECT
+      inserted_event.id AS "eventId",
+      updated_day.id AS "workDayId",
+      updated_day.user_id AS "userId",
+      updated_day.employer_id AS "employerId",
+      inserted_event.type AS "eventType",
+      inserted_event.occurred_at AS "occurredAt",
+      inserted_event.created_at AS "eventCreatedAt",
+      updated_day.work_date AS "workDate",
+      updated_day.started_at AS "startedAt",
+      updated_day.ended_at AS "endedAt",
+      updated_day.status,
+      updated_day.last_event_type AS "lastEventType",
+      updated_day.last_event_at AS "lastEventAt"
+    FROM inserted_event
+    JOIN updated_day ON updated_day.id = inserted_event.work_day_id
+  `) as EventActionRow[];
+
+  return toEventActionResult(
+    rows,
+    'Cannot resolve this work day. Check the selected stop time and try again.',
   );
 };

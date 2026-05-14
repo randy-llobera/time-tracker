@@ -37,6 +37,7 @@ const formatDateTime = (value: string) =>
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
+    hour12: true,
   });
 
 const formatDuration = (seconds: number) => {

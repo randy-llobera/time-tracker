@@ -7,6 +7,7 @@ import {
   fetchHistory,
   fetchStatus,
   fetchUsers,
+  resolveStaleDay,
   type CurrentStatus,
   type HistoryFilterInput,
   type HistoryItem,
@@ -134,6 +135,7 @@ export const SelectionCard = () => {
   const [isStatusLoading, setIsStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<ClockAction | null>(null);
+  const [isResolvingStale, setIsResolvingStale] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
@@ -315,10 +317,14 @@ export const SelectionCard = () => {
   const isActionLoading = loadingAction !== null;
   const isSelectionStatusPending = hasSelections && isStatusLoading;
   const hasStartedWorkDay =
-    hasSelections && status !== null && status.state !== 'not_started';
+    hasSelections &&
+    status !== null &&
+    status.state !== 'not_started' &&
+    status.state !== 'needs_review';
   const areSelectionsDisabled =
     isLoading ||
     isActionLoading ||
+    isResolvingStale ||
     isSelectionStatusPending ||
     hasStartedWorkDay;
   const visibleStatus = hasSelections ? status : null;
@@ -337,7 +343,13 @@ export const SelectionCard = () => {
   };
 
   const handleAction = async (action: ClockAction) => {
-    if (!selectedUserId || !selectedEmployerId || loadingAction) {
+    if (
+      !selectedUserId ||
+      !selectedEmployerId ||
+      loadingAction ||
+      isResolvingStale ||
+      status?.state === 'needs_review'
+    ) {
       return;
     }
 
@@ -386,6 +398,60 @@ export const SelectionCard = () => {
     }
   };
 
+  const handleResolveStale = async (occurredAt?: string) => {
+    if (
+      !selectedUserId ||
+      !selectedEmployerId ||
+      loadingAction ||
+      isResolvingStale ||
+      status?.state !== 'needs_review'
+    ) {
+      return;
+    }
+
+    const actionInput = {
+      userId: selectedUserId,
+      employerId: selectedEmployerId,
+    };
+    const historyFilter = getActiveHistoryFilter({
+      filterMode: historyFilterMode,
+      selectedMonth,
+      rangeFrom,
+      rangeTo,
+    });
+
+    setIsResolvingStale(true);
+    setActionError(null);
+
+    try {
+      await resolveStaleDay({
+        ...actionInput,
+        ...(occurredAt ? { occurredAt } : {}),
+      });
+      const [currentStatus, history] = await Promise.all([
+        fetchStatus(actionInput),
+        historyFilter.filter
+          ? fetchHistory({ ...actionInput, filter: historyFilter.filter })
+          : Promise.resolve(null),
+      ]);
+
+      setStatus(currentStatus);
+      if (history) {
+        setHistoryError(null);
+        setHistoryValidationError(null);
+        setHistoryItems(history.items);
+      } else {
+        setHistoryItems([]);
+        setHistoryError(null);
+        setHistoryValidationError(historyFilter.validationError);
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Unknown API error');
+    } finally {
+      setIsResolvingStale(false);
+    }
+  };
+
   return (
     <div className='rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl'>
       <p className='text-sm font-medium text-slate-400'>TimeTracker</p>
@@ -422,6 +488,8 @@ export const SelectionCard = () => {
         <p className='mt-5 text-sm text-slate-400'>
           {hasStartedWorkDay
             ? 'End the current day before changing user or employer.'
+            : status?.state === 'needs_review'
+              ? 'Clock actions are blocked for this selection until review is resolved.'
             : 'Your selections are saved on this device.'}
         </p>
       )}
@@ -434,6 +502,8 @@ export const SelectionCard = () => {
         actionError={actionError}
         loadingAction={loadingAction}
         onAction={handleAction}
+        isResolvingStale={isResolvingStale}
+        onResolveStale={handleResolveStale}
       />
 
       <HistorySection

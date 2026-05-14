@@ -9,6 +9,15 @@ export type SelectOption = {
   name: string;
 };
 
+export type StaleWarning = {
+  reason:
+    | 'clocked_in_too_long'
+    | 'clocked_out_without_ending_day';
+  thresholdHours: number;
+  lastEventType: EventType;
+  lastEventAt: string;
+};
+
 export type CurrentStatus = {
   state: CurrentState;
   workDay: {
@@ -22,6 +31,7 @@ export type CurrentStatus = {
     lastEventType: EventType;
     lastEventAt: string;
   } | null;
+  staleWarning: StaleWarning | null;
 };
 
 export type HistoryItem = {
@@ -63,6 +73,10 @@ type HistoryInput = StatusInput & {
 };
 
 type EventActionInput = StatusInput;
+
+type ResolveStaleDayInput = StatusInput & {
+  occurredAt?: string;
+};
 
 const getApiBaseUrl = () => {
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
@@ -153,3 +167,6 @@ export const clockOut = (input: EventActionInput) =>
 
 export const endDay = (input: EventActionInput) =>
   postJson<unknown>('/api/events/end-day', input);
+
+export const resolveStaleDay = (input: ResolveStaleDayInput) =>
+  postJson<unknown>('/api/events/resolve-stale-day', input);
