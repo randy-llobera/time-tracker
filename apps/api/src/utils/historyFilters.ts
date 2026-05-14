@@ -11,6 +11,16 @@ export const historyDateSchema = z
   .regex(/^\d{4}-\d{2}-\d{2}$/)
   .refine((value) => formatDate(parseDate(value)) === value);
 
+export const historyQuerySchema = z.object({
+  userId: z.uuid(),
+  employerId: z.uuid(),
+  period: historyPeriodSchema.optional(),
+  today: historyDateSchema.optional(),
+  from: historyDateSchema.optional(),
+  to: historyDateSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(30),
+});
+
 type HistoryPeriod = z.infer<typeof historyPeriodSchema>;
 
 type HistoryFilterInput = {

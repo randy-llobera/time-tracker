@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   clockIn,
   clockOut,
+  downloadHistoryCsv,
   endDay,
   fetchEmployers,
   fetchHistory,
@@ -143,6 +144,8 @@ export const SelectionCard = () => {
   const [historyValidationError, setHistoryValidationError] = useState<
     string | null
   >(null);
+  const [isDownloadLoading, setIsDownloadLoading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [historyFilterMode, setHistoryFilterMode] =
     useState<HistoryFilterMode>('current_month');
   const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
@@ -342,6 +345,39 @@ export const SelectionCard = () => {
     setSelectedEmployerId(employerId);
   };
 
+  const handleDownload = async () => {
+    if (!selectedUserId || !selectedEmployerId || isDownloadLoading) {
+      return;
+    }
+
+    const historyFilter = getActiveHistoryFilter({
+      filterMode: historyFilterMode,
+      selectedMonth,
+      rangeFrom,
+      rangeTo,
+    });
+
+    if (!historyFilter.filter) {
+      setDownloadError(historyFilter.validationError);
+      return;
+    }
+
+    setIsDownloadLoading(true);
+    setDownloadError(null);
+
+    try {
+      await downloadHistoryCsv({
+        userId: selectedUserId,
+        employerId: selectedEmployerId,
+        filter: historyFilter.filter,
+      });
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : 'Unknown API error');
+    } finally {
+      setIsDownloadLoading(false);
+    }
+  };
+
   const handleAction = async (action: ClockAction) => {
     if (
       !selectedUserId ||
@@ -520,6 +556,9 @@ export const SelectionCard = () => {
         onSelectedMonthChange={setSelectedMonth}
         onRangeFromChange={setRangeFrom}
         onRangeToChange={setRangeTo}
+        isDownloadLoading={isDownloadLoading}
+        downloadError={hasSelections ? downloadError : null}
+        onDownload={handleDownload}
       />
     </div>
   );

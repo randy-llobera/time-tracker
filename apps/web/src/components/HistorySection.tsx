@@ -14,6 +14,9 @@ type HistorySectionProps = {
   onSelectedMonthChange: (value: string) => void;
   onRangeFromChange: (value: string) => void;
   onRangeToChange: (value: string) => void;
+  isDownloadLoading: boolean;
+  downloadError: string | null;
+  onDownload: () => void;
 };
 
 type HistoryFilterMode = 'current_week' | 'current_month' | 'month' | 'range';
@@ -144,6 +147,9 @@ export const HistorySection = ({
   onSelectedMonthChange,
   onRangeFromChange,
   onRangeToChange,
+  isDownloadLoading,
+  downloadError,
+  onDownload,
 }: HistorySectionProps) => {
   if (!hasSelections) {
     return (
@@ -246,6 +252,19 @@ export const HistorySection = ({
     <section className='mt-5 rounded-lg border border-slate-800 bg-slate-950 p-4'>
       <h2 className='text-sm font-medium text-slate-300'>History</h2>
       {controls}
+      <button
+        className='mt-4 w-full rounded-lg bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500'
+        type='button'
+        disabled={Boolean(validationError) || isLoading || isDownloadLoading}
+        onClick={onDownload}
+      >
+        {isDownloadLoading ? 'Downloading...' : 'Download CSV'}
+      </button>
+      {downloadError && (
+        <p className='mt-3 text-sm text-red-200'>
+          Could not download CSV: {downloadError}
+        </p>
+      )}
       {renderContent()}
     </section>
   );

@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { eventsRouter } from './routes/events.js';
+import { downloadRouter } from './routes/download.js';
 import { employersRouter } from './routes/employers.js';
 import { historyRouter } from './routes/history.js';
 import { statusRouter } from './routes/status.js';
@@ -39,6 +40,7 @@ app.get('/health', (_req, res) => {
 
 app.use('/api/employers', employersRouter);
 app.use('/api/events', eventsRouter);
+app.use('/api/download', downloadRouter);
 app.use('/api/history', historyRouter);
 app.use('/api/status', statusRouter);
 app.use('/api/users', usersRouter);

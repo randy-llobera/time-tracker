@@ -3,19 +3,8 @@ import { z } from 'zod';
 import { listHistory } from '../db/history.js';
 import {
   getHistoryDateBounds,
-  historyDateSchema,
-  historyPeriodSchema,
+  historyQuerySchema,
 } from '../utils/historyFilters.js';
-
-const historyQuerySchema = z.object({
-  userId: z.uuid(),
-  employerId: z.uuid(),
-  period: historyPeriodSchema.optional(),
-  today: historyDateSchema.optional(),
-  from: historyDateSchema.optional(),
-  to: historyDateSchema.optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(30),
-});
 
 export const historyRouter = Router();
 

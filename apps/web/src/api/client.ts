@@ -78,6 +78,15 @@ type ResolveStaleDayInput = StatusInput & {
   occurredAt?: string;
 };
 
+const getExportFilename = () => {
+  const now = new Date();
+  const day = now.getDate().toString().padStart(2, '0');
+  const month = (now.getMonth() + 1).toString().padStart(2, '0');
+  const year = now.getFullYear();
+
+  return `work-time-export-${day}${month}${year}.csv`;
+};
+
 const getApiBaseUrl = () => {
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
@@ -112,6 +121,16 @@ const fetchJson = async <T>(path: string): Promise<T> => {
   return (await response.json()) as T;
 };
 
+const fetchBlob = async (path: string): Promise<Blob> => {
+  const response = await fetch(`${getApiBaseUrl()}${path}`);
+
+  if (!response.ok) {
+    throw new Error(await getApiErrorMessage(response));
+  }
+
+  return response.blob();
+};
+
 const postJson = async <T>(path: string, body: unknown): Promise<T> => {
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     method: 'POST',
@@ -142,7 +161,11 @@ export const fetchStatus = ({ userId, employerId }: StatusInput) => {
   return fetchJson<CurrentStatus>(`/api/status?${searchParams.toString()}`);
 };
 
-export const fetchHistory = ({ userId, employerId, filter }: HistoryInput) => {
+const buildHistorySearchParams = ({
+  userId,
+  employerId,
+  filter,
+}: HistoryInput) => {
   const searchParams = new URLSearchParams({
     userId,
     employerId,
@@ -156,7 +179,27 @@ export const fetchHistory = ({ userId, employerId, filter }: HistoryInput) => {
     searchParams.set('today', filter.today);
   }
 
+  return searchParams;
+};
+
+export const fetchHistory = (input: HistoryInput) => {
+  const searchParams = buildHistorySearchParams(input);
+
   return fetchJson<HistoryResponse>(`/api/history?${searchParams.toString()}`);
+};
+
+export const downloadHistoryCsv = async (input: HistoryInput) => {
+  const searchParams = buildHistorySearchParams(input);
+  const blob = await fetchBlob(`/api/download?${searchParams.toString()}`);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = url;
+  link.download = getExportFilename();
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 };
 
 export const clockIn = (input: EventActionInput) =>
