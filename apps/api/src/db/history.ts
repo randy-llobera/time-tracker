@@ -5,6 +5,8 @@ type HistoryInput = {
   userId: string;
   employerId: string;
   limit: number;
+  fromDate?: string;
+  toDate?: string;
 };
 
 export type HistoryItem = {
@@ -24,12 +26,17 @@ export type HistoryItem = {
 export const listHistory = async (
   input: HistoryInput,
 ): Promise<HistoryItem[]> => {
+  const fromDate = input.fromDate ?? null;
+  const toDate = input.toDate ?? null;
+
   const rows = (await sql`
     WITH selected_work_days AS (
       SELECT *
       FROM work_days
       WHERE user_id = ${input.userId}::uuid
         AND employer_id = ${input.employerId}::uuid
+        AND (${fromDate}::date IS NULL OR work_date >= ${fromDate}::date)
+        AND (${toDate}::date IS NULL OR work_date <= ${toDate}::date)
       ORDER BY work_date DESC, started_at DESC
       LIMIT ${input.limit}
     ),

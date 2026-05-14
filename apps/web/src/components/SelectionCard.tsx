@@ -8,6 +8,7 @@ import {
   fetchStatus,
   fetchUsers,
   type CurrentStatus,
+  type HistoryFilterInput,
   type HistoryItem,
   type SelectOption,
 } from '../api/client';
@@ -21,7 +22,104 @@ import { SelectField } from './SelectField';
 const selectedUserIdKey = 'selectedUserId';
 const selectedEmployerIdKey = 'selectedEmployerId';
 
+type HistoryFilterMode = 'current_week' | 'current_month' | 'month' | 'range';
+
+type ActiveHistoryFilterResult =
+  | { filter: HistoryFilterInput; validationError: null }
+  | {
+      filter: null;
+      validationError: string;
+    };
+
+const padDatePart = (value: number) => value.toString().padStart(2, '0');
+
+const formatLocalDate = (date: Date) =>
+  `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(
+    date.getDate(),
+  )}`;
+
+const getCurrentMonthValue = () => formatLocalDate(new Date()).slice(0, 7);
+
+const getMonthDateRange = (month: string) => {
+  const [year, monthNumber] = month.split('-').map(Number);
+
+  if (!year || !monthNumber) {
+    return null;
+  }
+
+  return {
+    from: `${month}-01`,
+    to: formatLocalDate(new Date(year, monthNumber, 0)),
+  };
+};
+
+const getActiveHistoryFilter = ({
+  filterMode,
+  selectedMonth,
+  rangeFrom,
+  rangeTo,
+}: {
+  filterMode: HistoryFilterMode;
+  selectedMonth: string;
+  rangeFrom: string;
+  rangeTo: string;
+}): ActiveHistoryFilterResult => {
+  if (filterMode === 'current_week' || filterMode === 'current_month') {
+    return {
+      filter: {
+        period: filterMode,
+        today: formatLocalDate(new Date()),
+      },
+      validationError: null,
+    };
+  }
+
+  if (filterMode === 'month') {
+    const dateRange = getMonthDateRange(selectedMonth);
+
+    if (!dateRange) {
+      return {
+        filter: null,
+        validationError: 'Select a month to load history.',
+      };
+    }
+
+    return {
+      filter: {
+        period: 'range',
+        ...dateRange,
+      },
+      validationError: null,
+    };
+  }
+
+  if (!rangeFrom || !rangeTo) {
+    return {
+      filter: null,
+      validationError: 'Select both from and to dates to load history.',
+    };
+  }
+
+  if (rangeFrom > rangeTo) {
+    return {
+      filter: null,
+      validationError: 'From date must be before or equal to to date.',
+    };
+  }
+
+  return {
+    filter: {
+      period: 'range',
+      from: rangeFrom,
+      to: rangeTo,
+    },
+    validationError: null,
+  };
+};
+
 export const SelectionCard = () => {
+  const defaultMonth = getCurrentMonthValue();
+  const defaultMonthRange = getMonthDateRange(defaultMonth);
   const [users, setUsers] = useState<SelectOption[]>([]);
   const [employers, setEmployers] = useState<SelectOption[]>([]);
   const [selectedUserId, setSelectedUserId] = useState(
@@ -40,6 +138,14 @@ export const SelectionCard = () => {
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historyValidationError, setHistoryValidationError] = useState<
+    string | null
+  >(null);
+  const [historyFilterMode, setHistoryFilterMode] =
+    useState<HistoryFilterMode>('current_month');
+  const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
+  const [rangeFrom, setRangeFrom] = useState(defaultMonthRange?.from ?? '');
+  const [rangeTo, setRangeTo] = useState(defaultMonthRange?.to ?? '');
 
   useEffect(() => {
     const loadOptions = async () => {
@@ -143,13 +249,32 @@ export const SelectionCard = () => {
     let isCurrentRequest = true;
 
     const loadHistory = async () => {
+      const historyFilter = getActiveHistoryFilter({
+        filterMode: historyFilterMode,
+        selectedMonth,
+        rangeFrom,
+        rangeTo,
+      });
+
+      if (!historyFilter.filter) {
+        if (isCurrentRequest) {
+          setHistoryItems([]);
+          setIsHistoryLoading(false);
+          setHistoryError(null);
+          setHistoryValidationError(historyFilter.validationError);
+        }
+        return;
+      }
+
       setIsHistoryLoading(true);
       setHistoryError(null);
+      setHistoryValidationError(null);
 
       try {
         const history = await fetchHistory({
           userId: selectedUserId,
           employerId: selectedEmployerId,
+          filter: historyFilter.filter,
         });
 
         if (isCurrentRequest) {
@@ -174,7 +299,14 @@ export const SelectionCard = () => {
     return () => {
       isCurrentRequest = false;
     };
-  }, [selectedEmployerId, selectedUserId]);
+  }, [
+    historyFilterMode,
+    rangeFrom,
+    rangeTo,
+    selectedEmployerId,
+    selectedMonth,
+    selectedUserId,
+  ]);
 
   const loadStatusText = isLoading
     ? 'Loading users and employers...'
@@ -218,6 +350,12 @@ export const SelectionCard = () => {
       clockOut,
       endDay,
     }[action];
+    const historyFilter = getActiveHistoryFilter({
+      filterMode: historyFilterMode,
+      selectedMonth,
+      rangeFrom,
+      rangeTo,
+    });
 
     setLoadingAction(action);
     setActionError(null);
@@ -226,11 +364,21 @@ export const SelectionCard = () => {
       await actionRequest(actionInput);
       const [currentStatus, history] = await Promise.all([
         fetchStatus(actionInput),
-        fetchHistory(actionInput),
+        historyFilter.filter
+          ? fetchHistory({ ...actionInput, filter: historyFilter.filter })
+          : Promise.resolve(null),
       ]);
 
       setStatus(currentStatus);
-      setHistoryItems(history.items);
+      if (history) {
+        setHistoryError(null);
+        setHistoryValidationError(null);
+        setHistoryItems(history.items);
+      } else {
+        setHistoryItems([]);
+        setHistoryError(null);
+        setHistoryValidationError(historyFilter.validationError);
+      }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Unknown API error');
     } finally {
@@ -292,7 +440,16 @@ export const SelectionCard = () => {
         items={visibleHistoryItems}
         isLoading={hasSelections && isHistoryLoading}
         error={visibleHistoryError}
+        validationError={hasSelections ? historyValidationError : null}
         hasSelections={hasSelections}
+        filterMode={historyFilterMode}
+        selectedMonth={selectedMonth}
+        rangeFrom={rangeFrom}
+        rangeTo={rangeTo}
+        onFilterModeChange={setHistoryFilterMode}
+        onSelectedMonthChange={setSelectedMonth}
+        onRangeFromChange={setRangeFrom}
+        onRangeToChange={setRangeTo}
       />
     </div>
   );

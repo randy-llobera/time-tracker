@@ -4,8 +4,19 @@ type HistorySectionProps = {
   items: HistoryItem[];
   isLoading: boolean;
   error: string | null;
+  validationError: string | null;
   hasSelections: boolean;
+  filterMode: HistoryFilterMode;
+  selectedMonth: string;
+  rangeFrom: string;
+  rangeTo: string;
+  onFilterModeChange: (value: HistoryFilterMode) => void;
+  onSelectedMonthChange: (value: string) => void;
+  onRangeFromChange: (value: string) => void;
+  onRangeToChange: (value: string) => void;
 };
+
+type HistoryFilterMode = 'current_week' | 'current_month' | 'month' | 'range';
 
 const statusLabel: Record<HistoryItem['status'], string> = {
   active: 'Active',
@@ -40,11 +51,98 @@ const formatDuration = (seconds: number) => {
   return `${hours}h ${minutes}m`;
 };
 
+const inputClassName =
+  'mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-3 text-base text-slate-50';
+
+type HistoryFilterControlsProps = {
+  filterMode: HistoryFilterMode;
+  selectedMonth: string;
+  rangeFrom: string;
+  rangeTo: string;
+  onFilterModeChange: (value: HistoryFilterMode) => void;
+  onSelectedMonthChange: (value: string) => void;
+  onRangeFromChange: (value: string) => void;
+  onRangeToChange: (value: string) => void;
+};
+
+const HistoryFilterControls = ({
+  filterMode,
+  selectedMonth,
+  rangeFrom,
+  rangeTo,
+  onFilterModeChange,
+  onSelectedMonthChange,
+  onRangeFromChange,
+  onRangeToChange,
+}: HistoryFilterControlsProps) => (
+  <div className='mt-4 space-y-3'>
+    <label className='block'>
+      <span className='text-sm font-medium text-slate-300'>Filter</span>
+      <select
+        className={inputClassName}
+        value={filterMode}
+        onChange={(event) =>
+          onFilterModeChange(event.target.value as HistoryFilterMode)
+        }
+      >
+        <option value='current_month'>Current month</option>
+        <option value='current_week'>Current week</option>
+        <option value='month'>Month</option>
+        <option value='range'>Range</option>
+      </select>
+    </label>
+
+    {filterMode === 'month' && (
+      <label className='block'>
+        <span className='text-sm font-medium text-slate-300'>Month</span>
+        <input
+          className={inputClassName}
+          type='month'
+          value={selectedMonth}
+          onChange={(event) => onSelectedMonthChange(event.target.value)}
+        />
+      </label>
+    )}
+
+    {filterMode === 'range' && (
+      <div className='grid gap-3 sm:grid-cols-2'>
+        <label className='block'>
+          <span className='text-sm font-medium text-slate-300'>From</span>
+          <input
+            className={inputClassName}
+            type='date'
+            value={rangeFrom}
+            onChange={(event) => onRangeFromChange(event.target.value)}
+          />
+        </label>
+        <label className='block'>
+          <span className='text-sm font-medium text-slate-300'>To</span>
+          <input
+            className={inputClassName}
+            type='date'
+            value={rangeTo}
+            onChange={(event) => onRangeToChange(event.target.value)}
+          />
+        </label>
+      </div>
+    )}
+  </div>
+);
+
 export const HistorySection = ({
   items,
   isLoading,
   error,
+  validationError,
   hasSelections,
+  filterMode,
+  selectedMonth,
+  rangeFrom,
+  rangeTo,
+  onFilterModeChange,
+  onSelectedMonthChange,
+  onRangeFromChange,
+  onRangeToChange,
 }: HistorySectionProps) => {
   if (!hasSelections) {
     return (
@@ -57,38 +155,47 @@ export const HistorySection = ({
     );
   }
 
-  if (isLoading) {
-    return (
-      <section className='mt-5 rounded-lg border border-slate-800 bg-slate-950 p-4'>
-        <h2 className='text-sm font-medium text-slate-300'>History</h2>
-        <p className='mt-2 text-sm text-slate-400'>Loading history...</p>
-      </section>
-    );
-  }
+  const controls = (
+    <HistoryFilterControls
+      filterMode={filterMode}
+      selectedMonth={selectedMonth}
+      rangeFrom={rangeFrom}
+      rangeTo={rangeTo}
+      onFilterModeChange={onFilterModeChange}
+      onSelectedMonthChange={onSelectedMonthChange}
+      onRangeFromChange={onRangeFromChange}
+      onRangeToChange={onRangeToChange}
+    />
+  );
 
-  if (error) {
-    return (
-      <section className='mt-5 rounded-lg border border-red-900 bg-red-950/60 p-4'>
-        <h2 className='text-sm font-medium text-red-100'>History</h2>
-        <p className='mt-2 text-sm text-red-200'>
+  const renderContent = () => {
+    if (validationError) {
+      return (
+        <p className='mt-4 text-sm text-amber-200'>{validationError}</p>
+      );
+    }
+
+    if (isLoading) {
+      return (
+        <p className='mt-4 text-sm text-slate-400'>Loading history...</p>
+      );
+    }
+
+    if (error) {
+      return (
+        <p className='mt-4 text-sm text-red-200'>
           Could not load history: {error}
         </p>
-      </section>
-    );
-  }
+      );
+    }
 
-  if (items.length === 0) {
+    if (items.length === 0) {
+      return (
+        <p className='mt-4 text-sm text-slate-400'>No work history yet.</p>
+      );
+    }
+
     return (
-      <section className='mt-5 rounded-lg border border-slate-800 bg-slate-950 p-4'>
-        <h2 className='text-sm font-medium text-slate-300'>History</h2>
-        <p className='mt-2 text-sm text-slate-400'>No work history yet.</p>
-      </section>
-    );
-  }
-
-  return (
-    <section className='mt-5 rounded-lg border border-slate-800 bg-slate-950 p-4'>
-      <h2 className='text-sm font-medium text-slate-300'>History</h2>
       <div className='mt-4 space-y-3'>
         {items.map((item) => (
           <article
@@ -131,6 +238,14 @@ export const HistorySection = ({
           </article>
         ))}
       </div>
+    );
+  };
+
+  return (
+    <section className='mt-5 rounded-lg border border-slate-800 bg-slate-950 p-4'>
+      <h2 className='text-sm font-medium text-slate-300'>History</h2>
+      {controls}
+      {renderContent()}
     </section>
   );
 };

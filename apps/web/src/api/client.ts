@@ -42,9 +42,24 @@ type HistoryResponse = {
   items: HistoryItem[];
 };
 
+export type HistoryFilterInput =
+  | {
+      period: 'current_week' | 'current_month';
+      today: string;
+    }
+  | {
+      period: 'range';
+      from: string;
+      to: string;
+    };
+
 type StatusInput = {
   userId: string;
   employerId: string;
+};
+
+type HistoryInput = StatusInput & {
+  filter: HistoryFilterInput;
 };
 
 type EventActionInput = StatusInput;
@@ -113,11 +128,19 @@ export const fetchStatus = ({ userId, employerId }: StatusInput) => {
   return fetchJson<CurrentStatus>(`/api/status?${searchParams.toString()}`);
 };
 
-export const fetchHistory = ({ userId, employerId }: StatusInput) => {
+export const fetchHistory = ({ userId, employerId, filter }: HistoryInput) => {
   const searchParams = new URLSearchParams({
     userId,
     employerId,
+    period: filter.period,
   });
+
+  if (filter.period === 'range') {
+    searchParams.set('from', filter.from);
+    searchParams.set('to', filter.to);
+  } else {
+    searchParams.set('today', filter.today);
+  }
 
   return fetchJson<HistoryResponse>(`/api/history?${searchParams.toString()}`);
 };

@@ -282,6 +282,27 @@ GET  /api/history
 GET  /api/download
 ```
 
+`GET /api/history` requires `userId` and `employerId`.
+
+Optional history filters:
+
+```txt
+period=current_week|current_month|range
+today=YYYY-MM-DD
+from=YYYY-MM-DD
+to=YYYY-MM-DD
+limit=1..100
+```
+
+Filter rules:
+
+- `current_week` uses the Monday-Sunday week containing `today`.
+- `current_month` uses the calendar month containing `today`.
+- `range` uses inclusive `from` and `to` dates.
+- The frontend should send `today` as the user's local date for current-period filters.
+- The frontend month selector should send the selected month as `period=range`
+  with the first and last dates of that month.
+
 API responsibilities:
 
 - validate inputs
