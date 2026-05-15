@@ -8,15 +8,20 @@ import {
   historyQuerySchema,
 } from '../utils/historyFilters.js';
 
+const DISPLAY_TIME_ZONE = 'Europe/Madrid';
+
 const formatDatePart = (value: number) => value.toString().padStart(2, '0');
+
+const localDateFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: DISPLAY_TIME_ZONE,
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
 
 const formatDisplayDate = (value: Date | string) => {
   if (value instanceof Date) {
-    return [
-      formatDatePart(value.getUTCDate()),
-      formatDatePart(value.getUTCMonth() + 1),
-      value.getUTCFullYear().toString(),
-    ].join('/');
+    return localDateFormatter.format(value);
   }
 
   const [year, month, day] = value.split('-');
@@ -24,25 +29,37 @@ const formatDisplayDate = (value: Date | string) => {
   return `${day}/${month}/${year}`;
 };
 
+const localDateTimeFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: DISPLAY_TIME_ZONE,
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: true,
+});
+
 const formatDisplayDateTime = (value: Date | null) => {
   if (!value) {
     return '';
   }
 
-  const date = [
-    formatDatePart(value.getDate()),
-    formatDatePart(value.getMonth() + 1),
-    value.getFullYear().toString(),
-  ].join('/');
-  const hours = value.getHours();
-  const minutes = value.getMinutes();
-  const period = hours >= 12 ? 'PM' : 'AM';
-  const displayHours = hours % 12 || 12;
+  const parts = Object.fromEntries(
+    localDateTimeFormatter
+      .formatToParts(value)
+      .map((part) => [part.type, part.value]),
+  );
 
-  return `${date} ${formatDatePart(displayHours)}:${formatDatePart(minutes)} ${period}`;
+  return `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute} ${parts.dayPeriod}`;
 };
 
-const formatHours = (seconds: number) => (seconds / 3600).toFixed(2);
+const formatDuration = (seconds: number) => {
+  const totalMinutes = Math.round(seconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${hours}h ${minutes}m`;
+};
 
 const getPeriodLabel = ({ fromDate, toDate }: HistoryDateBounds) => {
   if (!fromDate || !toDate) {
@@ -75,7 +92,7 @@ downloadRouter.get('/', async (req, res, next) => {
     const csv = stringify(
       [
         ['Period', getPeriodLabel(dateBounds)],
-        ['Total Worked Hours', formatHours(totalWorkedSeconds)],
+        ['Total Worked Hours', formatDuration(totalWorkedSeconds)],
         ['Total Days Worked', items.length.toString()],
         [],
         [
@@ -90,11 +107,11 @@ downloadRouter.get('/', async (req, res, next) => {
         ...items.map((item) => [
           item.userName,
           item.employerName,
-          formatDisplayDate(item.startedAt),
+          formatDisplayDate(item.workDate),
           formatDisplayDateTime(item.startedAt),
           formatDisplayDateTime(item.endedAt),
-          formatHours(item.totalWorkedSeconds),
-          formatHours(item.totalBreakSeconds),
+          formatDuration(item.totalWorkedSeconds),
+          formatDuration(item.totalBreakSeconds),
         ]),
       ],
       {
