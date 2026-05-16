@@ -82,7 +82,7 @@ const getActiveHistoryFilter = ({
     if (!dateRange) {
       return {
         filter: null,
-        validationError: 'Select a month to load history.',
+        validationError: 'Selecciona un mes para cargar el historial.',
       };
     }
 
@@ -98,14 +98,15 @@ const getActiveHistoryFilter = ({
   if (!rangeFrom || !rangeTo) {
     return {
       filter: null,
-      validationError: 'Select both from and to dates to load history.',
+      validationError:
+        'Selecciona las fechas de inicio y fin para cargar el historial.',
     };
   }
 
   if (rangeFrom > rangeTo) {
     return {
       filter: null,
-      validationError: 'From date must be before or equal to to date.',
+      validationError: 'La fecha de inicio debe ser anterior o igual a la final.',
     };
   }
 
@@ -178,7 +179,9 @@ export const SelectionCard = () => {
             : currentEmployerId,
         );
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown API error');
+        setError(
+          err instanceof Error ? err.message : 'Error desconocido de la API',
+        );
       } finally {
         setIsLoading(false);
       }
@@ -229,7 +232,7 @@ export const SelectionCard = () => {
         if (isCurrentRequest) {
           setStatus(null);
           setStatusError(
-            err instanceof Error ? err.message : 'Unknown API error',
+            err instanceof Error ? err.message : 'Error desconocido de la API',
           );
         }
       } finally {
@@ -289,7 +292,7 @@ export const SelectionCard = () => {
         if (isCurrentRequest) {
           setHistoryItems([]);
           setHistoryError(
-            err instanceof Error ? err.message : 'Unknown API error',
+            err instanceof Error ? err.message : 'Error desconocido de la API',
           );
         }
       } finally {
@@ -314,8 +317,8 @@ export const SelectionCard = () => {
   ]);
 
   const loadStatusText = isLoading
-    ? 'Loading users and employers...'
-    : 'Choose who is working today.';
+    ? 'Cargando usuarios y empleadores...'
+    : 'Elige quién trabaja hoy.';
   const hasSelections = Boolean(selectedUserId && selectedEmployerId);
   const isActionLoading = loadingAction !== null;
   const isSelectionStatusPending = hasSelections && isStatusLoading;
@@ -372,7 +375,9 @@ export const SelectionCard = () => {
         filter: historyFilter.filter,
       });
     } catch (err) {
-      setDownloadError(err instanceof Error ? err.message : 'Unknown API error');
+      setDownloadError(
+        err instanceof Error ? err.message : 'Error desconocido de la API',
+      );
     } finally {
       setIsDownloadLoading(false);
     }
@@ -428,7 +433,9 @@ export const SelectionCard = () => {
         setHistoryValidationError(historyFilter.validationError);
       }
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Unknown API error');
+      setActionError(
+        err instanceof Error ? err.message : 'Error desconocido de la API',
+      );
     } finally {
       setLoadingAction(null);
     }
@@ -482,7 +489,9 @@ export const SelectionCard = () => {
         setHistoryValidationError(historyFilter.validationError);
       }
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Unknown API error');
+      setActionError(
+        err instanceof Error ? err.message : 'Error desconocido de la API',
+      );
     } finally {
       setIsResolvingStale(false);
     }
@@ -491,19 +500,19 @@ export const SelectionCard = () => {
   return (
     <div className='rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl'>
       <p className='text-sm font-medium text-slate-400'>TimeTracker</p>
-      <h1 className='mt-3 text-2xl font-bold'>Set up today&apos;s shift.</h1>
+      <h1 className='mt-3 text-2xl font-bold'>Prepara la jornada de hoy.</h1>
       <p className='mt-2 text-sm text-slate-400'>{loadStatusText}</p>
 
       {error && (
         <div className='mt-5 rounded-lg border border-red-900 bg-red-950/60 p-3 text-sm text-red-200'>
-          Could not load options: {error}
+          No se pudieron cargar las opciones: {error}
         </div>
       )}
 
       <div className='mt-6 space-y-4'>
         <SelectField
-          label='User'
-          placeholder='Select user'
+          label='Usuario'
+          placeholder='Selecciona usuario'
           options={users}
           value={selectedUserId}
           disabled={areSelectionsDisabled || users.length === 0}
@@ -511,8 +520,8 @@ export const SelectionCard = () => {
         />
 
         <SelectField
-          label='Employer'
-          placeholder='Select employer'
+          label='Empleador'
+          placeholder='Selecciona empleador'
           options={employers}
           value={selectedEmployerId}
           disabled={areSelectionsDisabled || employers.length === 0}
@@ -523,10 +532,10 @@ export const SelectionCard = () => {
       {!isLoading && !error && (
         <p className='mt-5 text-sm text-slate-400'>
           {hasStartedWorkDay
-            ? 'End the current day before changing user or employer.'
+            ? 'Termina la jornada actual antes de cambiar usuario o empleador.'
             : status?.state === 'needs_review'
-              ? 'Clock actions are blocked for this selection until review is resolved.'
-            : 'Your selections are saved on this device.'}
+              ? 'Los fichajes están bloqueados hasta resolver la revisión.'
+              : 'Tus selecciones se guardan en este dispositivo.'}
         </p>
       )}
 

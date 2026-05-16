@@ -22,20 +22,20 @@ type HistorySectionProps = {
 type HistoryFilterMode = 'current_week' | 'current_month' | 'month' | 'range';
 
 const statusLabel: Record<HistoryItem['status'], string> = {
-  active: 'Active',
-  ended: 'Ended',
-  needs_review: 'Needs review',
+  active: 'Activa',
+  ended: 'Terminada',
+  needs_review: 'Requiere revisión',
 };
 
 const formatDate = (value: string) =>
-  new Date(value).toLocaleDateString(undefined, {
+  new Date(value).toLocaleDateString('es-ES', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   });
 
 const formatDateTime = (value: string) =>
-  new Date(value).toLocaleString(undefined, {
+  new Date(value).toLocaleString('es-ES', {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -81,7 +81,7 @@ const HistoryFilterControls = ({
 }: HistoryFilterControlsProps) => (
   <div className='mt-4 space-y-3'>
     <label className='block'>
-      <span className='text-sm font-medium text-slate-300'>Filter</span>
+      <span className='text-sm font-medium text-slate-300'>Filtro</span>
       <select
         className={inputClassName}
         value={filterMode}
@@ -89,16 +89,16 @@ const HistoryFilterControls = ({
           onFilterModeChange(event.target.value as HistoryFilterMode)
         }
       >
-        <option value='current_month'>Current month</option>
-        <option value='current_week'>Current week</option>
-        <option value='month'>Month</option>
-        <option value='range'>Range</option>
+        <option value='current_month'>Mes actual</option>
+        <option value='current_week'>Semana actual</option>
+        <option value='month'>Mes</option>
+        <option value='range'>Rango</option>
       </select>
     </label>
 
     {filterMode === 'month' && (
       <label className='block'>
-        <span className='text-sm font-medium text-slate-300'>Month</span>
+        <span className='text-sm font-medium text-slate-300'>Mes</span>
         <input
           className={inputClassName}
           type='month'
@@ -111,7 +111,7 @@ const HistoryFilterControls = ({
     {filterMode === 'range' && (
       <div className='grid gap-3 sm:grid-cols-2'>
         <label className='block'>
-          <span className='text-sm font-medium text-slate-300'>From</span>
+          <span className='text-sm font-medium text-slate-300'>Desde</span>
           <input
             className={inputClassName}
             type='date'
@@ -120,7 +120,7 @@ const HistoryFilterControls = ({
           />
         </label>
         <label className='block'>
-          <span className='text-sm font-medium text-slate-300'>To</span>
+          <span className='text-sm font-medium text-slate-300'>Hasta</span>
           <input
             className={inputClassName}
             type='date'
@@ -154,9 +154,9 @@ export const HistorySection = ({
   if (!hasSelections) {
     return (
       <section className='mt-5 rounded-lg border border-slate-800 bg-slate-950 p-4'>
-        <h2 className='text-sm font-medium text-slate-300'>History</h2>
+        <h2 className='text-sm font-medium text-slate-300'>Historial</h2>
         <p className='mt-2 text-sm text-slate-400'>
-          Select a user and employer to see work history.
+          Selecciona un usuario y empleador para ver el historial.
         </p>
       </section>
     );
@@ -184,21 +184,21 @@ export const HistorySection = ({
 
     if (isLoading) {
       return (
-        <p className='mt-4 text-sm text-slate-400'>Loading history...</p>
+        <p className='mt-4 text-sm text-slate-400'>Cargando historial...</p>
       );
     }
 
     if (error) {
       return (
         <p className='mt-4 text-sm text-red-200'>
-          Could not load history: {error}
+          No se pudo cargar el historial: {error}
         </p>
       );
     }
 
     if (items.length === 0) {
       return (
-        <p className='mt-4 text-sm text-slate-400'>No work history yet.</p>
+        <p className='mt-4 text-sm text-slate-400'>Aún no hay historial.</p>
       );
     }
 
@@ -220,23 +220,23 @@ export const HistorySection = ({
               </div>
               <div className='text-right text-sm text-slate-300'>
                 <p>{formatDuration(item.totalWorkedSeconds)}</p>
-                <p className='text-slate-500'>worked</p>
+                <p className='text-slate-500'>trabajado</p>
               </div>
             </div>
 
             <dl className='mt-4 grid gap-3 text-sm text-slate-300'>
               <div className='flex justify-between gap-3'>
-                <dt className='text-slate-500'>Started</dt>
+                <dt className='text-slate-500'>Inicio</dt>
                 <dd className='text-right'>{formatDateTime(item.startedAt)}</dd>
               </div>
               <div className='flex justify-between gap-3'>
-                <dt className='text-slate-500'>Ended</dt>
+                <dt className='text-slate-500'>Fin</dt>
                 <dd className='text-right'>
-                  {item.endedAt ? formatDateTime(item.endedAt) : 'Not ended'}
+                  {item.endedAt ? formatDateTime(item.endedAt) : 'Sin terminar'}
                 </dd>
               </div>
               <div className='flex justify-between gap-3'>
-                <dt className='text-slate-500'>Breaks</dt>
+                <dt className='text-slate-500'>Descansos</dt>
                 <dd className='text-right'>
                   {formatDuration(item.totalBreakSeconds)}
                 </dd>
@@ -250,7 +250,7 @@ export const HistorySection = ({
 
   return (
     <section className='mt-5 rounded-lg border border-slate-800 bg-slate-950 p-4'>
-      <h2 className='text-sm font-medium text-slate-300'>History</h2>
+      <h2 className='text-sm font-medium text-slate-300'>Historial</h2>
       {controls}
       <button
         className='mt-4 w-full rounded-lg bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500'
@@ -258,11 +258,11 @@ export const HistorySection = ({
         disabled={Boolean(validationError) || isLoading || isDownloadLoading}
         onClick={onDownload}
       >
-        {isDownloadLoading ? 'Downloading...' : 'Download CSV'}
+        {isDownloadLoading ? 'Descargando...' : 'Descargar Historial'}
       </button>
       {downloadError && (
         <p className='mt-3 text-sm text-red-200'>
-          Could not download CSV: {downloadError}
+          No se pudo descargar el historial: {downloadError}
         </p>
       )}
       {renderContent()}

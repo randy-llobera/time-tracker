@@ -16,10 +16,10 @@ type CurrentStatusCardProps = {
 };
 
 const stateLabel: Record<CurrentStatus['state'], string> = {
-  not_started: 'Not started',
-  working: 'Working',
-  on_break: 'On break',
-  needs_review: 'Needs review',
+  not_started: 'Fuera de Jornada',
+  working: 'Trabajando',
+  on_break: 'En Descanso',
+  needs_review: 'Requiere revisión',
 };
 
 const padDatePart = (value: number) => value.toString().padStart(2, '0');
@@ -30,7 +30,7 @@ const formatLocalDateInputValue = (date: Date) =>
   )}`;
 
 const formatDisplayDateTime = (value: string) =>
-  new Date(value).toLocaleString(undefined, {
+  new Date(value).toLocaleString('es-ES', {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -159,9 +159,9 @@ export const CurrentStatusCard = ({
   if (!hasSelections) {
     return (
       <div className='mt-5 rounded-lg border border-slate-800 bg-slate-950 p-4'>
-        <p className='text-sm font-medium text-slate-300'>Current status</p>
+        <p className='text-sm font-medium text-slate-300'>Estado actual</p>
         <p className='mt-2 text-sm text-slate-400'>
-          Select a user and employer to see today&apos;s status.
+          Selecciona un usuario y empleador para ver el estado de hoy.
         </p>
       </div>
     );
@@ -170,8 +170,8 @@ export const CurrentStatusCard = ({
   if (isLoading) {
     return (
       <div className='mt-5 rounded-lg border border-slate-800 bg-slate-950 p-4'>
-        <p className='text-sm font-medium text-slate-300'>Current status</p>
-        <p className='mt-2 text-sm text-slate-400'>Loading status...</p>
+        <p className='text-sm font-medium text-slate-300'>Estado actual</p>
+        <p className='mt-2 text-sm text-slate-400'>Cargando estado...</p>
       </div>
     );
   }
@@ -179,9 +179,9 @@ export const CurrentStatusCard = ({
   if (error) {
     return (
       <div className='mt-5 rounded-lg border border-red-900 bg-red-950/60 p-4'>
-        <p className='text-sm font-medium text-red-100'>Current status</p>
+        <p className='text-sm font-medium text-red-100'>Estado actual</p>
         <p className='mt-2 text-sm text-red-200'>
-          Could not load status: {error}
+          No se pudo cargar el estado: {error}
         </p>
       </div>
     );
@@ -209,35 +209,36 @@ export const CurrentStatusCard = ({
 
   return (
     <div className='mt-5 rounded-lg border border-slate-800 bg-slate-950 p-4'>
-      <p className='text-sm font-medium text-slate-300'>Current status</p>
+      <p className='text-sm font-medium text-slate-300'>Estado actual</p>
       <p className='mt-2 text-2xl font-bold text-slate-50'>
-        {status ? stateLabel[status.state] : 'Unknown'}
+        {status ? stateLabel[status.state] : 'Desconocido'}
       </p>
       {status?.workDay && (
         <p className='mt-2 text-sm text-slate-400'>
-          Last update: {formatDisplayDateTime(status.workDay.lastEventAt)}
+          Última actualización:{' '}
+          {formatDisplayDateTime(status.workDay.lastEventAt)}
         </p>
       )}
 
       {status?.state === 'needs_review' && (
         <div className='mt-5 rounded-lg border border-amber-700 bg-amber-950/60 p-4'>
           <p className='text-base font-semibold text-amber-100'>
-            Current workday needs review
+            La jornada actual requiere revisión
           </p>
           <p className='mt-2 text-sm text-amber-100'>
-            Resolve the previous session before clocking in again.
+            Resuelve la sesión anterior antes de fichar de nuevo.
           </p>
 
           {staleLastEventAt && (
             <dl className='mt-4 grid gap-2 text-sm text-amber-100'>
               {staleThresholdHours && (
                 <div className='flex justify-between gap-3'>
-                  <dt className='text-amber-300'>Review threshold</dt>
+                  <dt className='text-amber-300'>Límite de revisión</dt>
                   <dd className='text-right'>{staleThresholdHours}h</dd>
                 </div>
               )}
               <div className='flex justify-between gap-3'>
-                <dt className='text-amber-300'>Last action time</dt>
+                <dt className='text-amber-300'>Hora de la última acción</dt>
                 <dd className='text-right'>
                   {formatDisplayDateTime(staleLastEventAt)}
                 </dd>
@@ -248,8 +249,8 @@ export const CurrentStatusCard = ({
           {staleLastEventType === 'clock_out' && (
             <div className='mt-4 grid gap-3'>
               <p className='text-sm text-amber-100'>
-                You clocked out but did not end the day. End the workday at
-                your last clock-out time?
+                Fichaste descanso, pero no terminaste la jornada. ¿Terminar la
+                jornada a la hora del último descanso?
               </p>
               <button
                 className='w-full rounded-lg bg-amber-300 px-4 py-3 text-base font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-60'
@@ -257,7 +258,7 @@ export const CurrentStatusCard = ({
                 type='button'
                 onClick={() => onResolveStale()}
               >
-                {isResolvingStale ? 'Resolving...' : 'End Workday'}
+                {isResolvingStale ? 'Resolviendo...' : 'Terminar Jornada'}
               </button>
             </div>
           )}
@@ -265,11 +266,11 @@ export const CurrentStatusCard = ({
           {staleLastEventType === 'clock_in' && (
             <div className='mt-4 grid gap-3'>
               <p className='text-sm text-amber-100'>
-                Last work session was not ended. Please choose the time you
-                stopped working.
+                La última sesión de trabajo no se cerró. Elige la hora en que
+                dejaste de trabajar.
               </p>
               <label className='block'>
-                <span className='text-sm font-medium text-amber-200'>Date</span>
+                <span className='text-sm font-medium text-amber-200'>Fecha</span>
                 <input
                   className='mt-2 w-full rounded-lg border border-amber-700 bg-slate-950 px-3 py-3 text-base text-slate-50'
                   max={formatLocalDateInputValue(maxStopDate)}
@@ -286,14 +287,14 @@ export const CurrentStatusCard = ({
               <div className='grid grid-cols-3 gap-2'>
                 <label className='block'>
                   <span className='text-sm font-medium text-amber-200'>
-                    Hour
+                    Hora
                   </span>
                   <select
                     className='mt-2 w-full rounded-lg border border-amber-700 bg-slate-950 px-3 py-3 text-base text-slate-50'
                     value={staleStopHour}
                     onChange={(event) => setStaleStopHour(event.target.value)}
                   >
-                    <option value=''>Hour</option>
+                    <option value=''>Hora</option>
                     {hours.map((hour) => (
                       <option
                         disabled={
@@ -316,7 +317,7 @@ export const CurrentStatusCard = ({
                 </label>
                 <label className='block'>
                   <span className='text-sm font-medium text-amber-200'>
-                    Minute
+                    Minuto
                   </span>
                   <select
                     className='mt-2 w-full rounded-lg border border-amber-700 bg-slate-950 px-3 py-3 text-base text-slate-50'
@@ -378,7 +379,8 @@ export const CurrentStatusCard = ({
               </div>
               {hasCompleteStopTime && !validSelectedStopTime && (
                 <p className='text-sm text-amber-200'>
-                  Choose a time after the last clock-in and no later than now.
+                  Elige una hora posterior al último fichaje de entrada y no más
+                  tarde que ahora.
                 </p>
               )}
               <button
@@ -390,7 +392,7 @@ export const CurrentStatusCard = ({
                   onResolveStale(validSelectedStopTime.toISOString())
                 }
               >
-                {isResolvingStale ? 'Resolving...' : 'Save Stop Time'}
+                {isResolvingStale ? 'Resolviendo...' : 'Guardar Hora de Salida'}
               </button>
             </div>
           )}
@@ -398,8 +400,8 @@ export const CurrentStatusCard = ({
           {staleLastEventType !== 'clock_in' &&
             staleLastEventType !== 'clock_out' && (
               <p className='mt-4 text-sm text-amber-200'>
-                Correction is not available yet. This record needs manual
-                review.
+                La corrección aún no está disponible. Este registro requiere
+                revisión manual.
               </p>
             )}
         </div>
@@ -418,7 +420,9 @@ export const CurrentStatusCard = ({
           type='button'
           onClick={() => onAction('clockIn')}
         >
-          {loadingAction === 'clockIn' ? 'Clocking in...' : 'Clock In'}
+          {loadingAction === 'clockIn'
+            ? 'Fichando entrada...'
+            : 'Fichar Entrada'}
         </button>
       )}
 
@@ -430,7 +434,9 @@ export const CurrentStatusCard = ({
             type='button'
             onClick={() => onAction('clockOut')}
           >
-            {loadingAction === 'clockOut' ? 'Clocking out...' : 'Clock Out'}
+            {loadingAction === 'clockOut'
+              ? 'Fichando descanso...'
+              : 'Fichar Descanso'}
           </button>
           <button
             className='w-full rounded-lg border border-slate-700 px-4 py-3 text-base font-semibold text-slate-50 disabled:cursor-not-allowed disabled:opacity-60'
@@ -438,7 +444,9 @@ export const CurrentStatusCard = ({
             type='button'
             onClick={() => onAction('endDay')}
           >
-            {loadingAction === 'endDay' ? 'Ending day...' : 'End Day'}
+            {loadingAction === 'endDay'
+              ? 'Terminando jornada...'
+              : 'Terminar Jornada'}
           </button>
         </div>
       )}
@@ -451,7 +459,9 @@ export const CurrentStatusCard = ({
             type='button'
             onClick={() => onAction('clockIn')}
           >
-            {loadingAction === 'clockIn' ? 'Clocking in...' : 'Clock In'}
+            {loadingAction === 'clockIn'
+              ? 'Fichando entrada...'
+              : 'Fichar Entrada'}
           </button>
           <button
             className='w-full rounded-lg border border-slate-700 px-4 py-3 text-base font-semibold text-slate-50 disabled:cursor-not-allowed disabled:opacity-60'
@@ -459,7 +469,9 @@ export const CurrentStatusCard = ({
             type='button'
             onClick={() => onAction('endDay')}
           >
-            {loadingAction === 'endDay' ? 'Ending day...' : 'End Day'}
+            {loadingAction === 'endDay'
+              ? 'Terminando jornada...'
+              : 'Terminar Jornada'}
           </button>
         </div>
       )}

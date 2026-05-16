@@ -78,6 +78,19 @@ type ResolveStaleDayInput = StatusInput & {
   occurredAt?: string;
 };
 
+const apiErrorMessages: Record<string, string> = {
+  'Already clocked in.': 'Ya fichaste entrada.',
+  'Cannot clock out while already on break.':
+    'No puedes fichar descanso si ya estás en descanso.',
+  'Cannot resolve this work day. Check the selected stop time and try again.':
+    'No se puede resolver esta jornada. Revisa la hora seleccionada e inténtalo de nuevo.',
+  'Invalid download request.': 'La solicitud de descarga no es válida.',
+  'Invalid event request.': 'La solicitud de fichaje no es válida.',
+  'Invalid history request.': 'La solicitud de historial no es válida.',
+  'Invalid status request.': 'La solicitud de estado no es válida.',
+  'Work day has already finished.': 'La jornada ya terminó.',
+};
+
 const getExportFilename = () => {
   const now = new Date();
   const day = now.getDate().toString().padStart(2, '0');
@@ -91,7 +104,7 @@ const getApiBaseUrl = () => {
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
   if (!baseUrl) {
-    throw new Error('VITE_API_BASE_URL is not configured');
+    throw new Error('VITE_API_BASE_URL no está configurada');
   }
 
   return baseUrl.replace(/\/$/, '');
@@ -102,13 +115,13 @@ const getApiErrorMessage = async (response: Response) => {
     const data = (await response.json()) as { error?: unknown };
 
     if (typeof data.error === 'string') {
-      return data.error;
+      return apiErrorMessages[data.error] ?? data.error;
     }
   } catch {
     // Fall back to the status code below when the API does not return JSON.
   }
 
-  return `API responded with ${response.status}`;
+  return `La API respondió con ${response.status}`;
 };
 
 const fetchJson = async <T>(path: string): Promise<T> => {
